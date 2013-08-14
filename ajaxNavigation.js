@@ -1,81 +1,81 @@
-function Hist() {
-	this.url = window.location.href
+var Hist
+if(window.history.pushState)
+	Hist = Hist || new HistController()
+
+function HistController() {
+	var _this = this
+	this.url = window.location.pathname
 	this.cache = {}
 	this.view = '#view'
 	this.start = false
-	this.init = function() {}
-	$(function() {
-		Hist.init()
-		if(window.location.hash) {
-			Hist.get(window.location.hash.replace('#!', ''))
-		}
-
-		$(document).on('click', 'a[href^="/"]', Hist.get)
-		$(window).on('popstate', Hist.changeState)
-	})
-}
-
-Hist.prototype.get = function(e) {
-	Hist.url = (e.target) ? $(e.target).attr('href') : e
-	Hist.start = true
-	if(Hist.url in Hist.cache) {
-		Hist.render(Hist.cache[Hist.url], false)
-	} else {
-		$.ajax({
-			url: Hist.url,
-			type: 'GET',
-			cache: false,
-			success: Hist.render,
-			error: function(e, xhr, msg) {
-				console.log(e, xhr, msg)
+	this.init = function() {
+		$('.overlay, .cat').addClass('anim')
+	}
+	this.get = function(e) {
+		if(typeof e == 'object')
+			e.preventDefault()
+		if(typeof e === 'string' || !e.isPropagationStopped()) {
+			_this.url = (typeof e == 'object') ? $(e.currentTarget).attr('href') : e
+			_this.start = true
+			if(_this.url in _this.cache) {
+				_this.render(_this.cache[_this.url], false)
+			} else {
+				$.ajax({
+					url: _this.url,
+					type: 'GET',
+					cache: false,
+					success: function(data) {
+						_this.render(data, true)
+					},
+					error: function(xhr, e, msg) {
+						$('#view').prepend($('<div id="flashMessage">An Error Occurred: ('+msg+')<br>'+xhr.responseText+'</div>'))
+					}
+				})
 			}
-		})
-	}
-	return false
-}
-
-Hist.prototype.changeState = function() {
-	console.log('pop')
-	if(!history.state || !Hist.start) {
-		Hist.saveState()
-	} else {
-		Hist.render(history.state, false)
-	}
-}
-
-Hist.prototype.saveState = function() {
-	data = {html:$(Hist.view).html(),url:window.location.href}
-	window.history.replaceState(JSON.stringify(data), null, data.url)
-}
-
-Hist.prototype.render = function(data, push) {
-	var push = (typeof push === 'undefined') ? false : push
-	try {
-		data = JSON.parse(data)
-	} catch(e) {
-		data = {html:data, url: Hist.url}
-	}
-	$(Hist.view).fadeOut(50, function() {$(this).html(data.html).fadeIn(50); Hist.init()})
-	if(history.pushState) {
-		if(push) {
-			Hist._cache(data.url, data.html)
-			history.pushState(JSON.stringify(data), null, data.url)
-		} else {
-			history.replaceState(JSON.stringify(data), null, data.url)
 		}
-	} else if (push) {
-		window.location.hash = '!'+data.url.substring(data.url.indexOf('#'), -1).replace(window.location.origin, '')
+	},
+	this.changeState = function() {
+		if(!history.state || !_this.start) {
+			_this.saveState()
+		} else {
+			_this.render(history.state, false)
+		}
+	},
+	this.saveState = function() {
+		data = {html:$(_this.view).html(),url:window.location.pathname}
+		window.history.replaceState(JSON.stringify(data), null, data.url)
+	},
+	this.render = function(data, push) {
+		var push = (typeof push === 'undefined') ? true : push
+		try {
+			data = JSON.parse(data)
+		} catch(e) {
+			data = {html:data, url: _this.url}
+		}
+		if(window.history.pushState) {
+			if(push) {
+				_this._cache(data.url, data.html)
+				window.history.pushState(JSON.stringify(data), null, data.url)
+			} else {
+				window.history.replaceState(JSON.stringify(data), null, data.url)
+			}
+		} else if (push) {
+			// window.location.hash = '!'+data.url.substring(data.url.indexOf('#'), -1)
+		}
+		$(_this.view).html(data.html)
+		_this.init()
+	},
+	this._cache = function(url, data) {
+		if(!(url in _this.cache)) {
+			_this.cache[url] = JSON.stringify({html:data,url:url})
+			setTimeout(function() {
+				delete _this.cache[url]
+			}, 10000)
+		}
 	}
-}
-
-Hist.prototype._cache = function(url, data) {
-	if(!(url in this.cache)) {
-		this.cache[url] = JSON.stringify({html:data,url:url})
-		setTimeout(function() {
-			console.log('cache delete '+url)
-			delete Hist.cache[url]
-		}, 10000)
+	if(window.location.hash) {
+		this.get(window.location.hash.replace('#!', ''))
 	}
+	$(document).on('click', 'a[href^="/"]:not(.hard)', this.get)
+	$(window).on('popstate', this.changeState)
 }
-
-var Hist = new Hist()
