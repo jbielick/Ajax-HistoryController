@@ -9,29 +9,29 @@ function HistController() {
 	this.view = '#view'
 	this.start = false
 	this.init = function() {
-		$('.overlay, .cat').addClass('anim')
+
 	}
 	this.get = function(e) {
 		if(typeof e == 'object')
 			e.preventDefault()
-		if(typeof e === 'string' || !e.isPropagationStopped()) {
-			_this.url = (typeof e == 'object') ? $(e.currentTarget).attr('href') : e
-			_this.start = true
-			if(_this.url in _this.cache) {
-				_this.render(_this.cache[_this.url], false)
-			} else {
-				$.ajax({
-					url: _this.url,
-					type: 'GET',
-					cache: false,
-					success: function(data) {
-						_this.render(data, true)
-					},
-					error: function(xhr, e, msg) {
+		_this.url = (typeof e == 'object') ? $(e.currentTarget).attr('href') : e
+		_this.start = true
+		if(_this.url in _this.cache) {
+			_this.render(_this.cache[_this.url], false)
+		} else {
+			$.ajax({
+				url: _this.url,
+				type: 'GET',
+				cache: false,
+				success: function(data) {
+					_this.render(data, true)
+				},
+				error: function(xhr, e, msg) {
+					_this.render(xhr.responseText, true)
+					if(!(/^4/.test(xhr.status)))
 						$('#view').prepend($('<div id="flashMessage">An Error Occurred: ('+msg+')<br>'+xhr.responseText+'</div>'))
-					}
-				})
-			}
+				}
+			})
 		}
 	},
 	this.changeState = function() {
@@ -43,7 +43,7 @@ function HistController() {
 	},
 	this.saveState = function() {
 		data = {html:$(_this.view).html(),url:window.location.pathname}
-		window.history.replaceState(JSON.stringify(data), null, data.url)
+		window.history.replaceState(JSON.stringify(data), document.title, data.url)
 	},
 	this.render = function(data, push) {
 		var push = (typeof push === 'undefined') ? true : push
@@ -52,6 +52,7 @@ function HistController() {
 		} catch(e) {
 			data = {html:data, url: _this.url}
 		}
+		_this.saveState()
 		if(window.history.pushState) {
 			if(push) {
 				_this._cache(data.url, data.html)
