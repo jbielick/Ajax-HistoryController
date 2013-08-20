@@ -1,3 +1,7 @@
+/*
+ *  History Controller
+ *    Author: Josh Bielick
+ */
 var Hist
 if(window.history.pushState)
 	Hist = Hist || new HistController()
@@ -24,7 +28,7 @@ function HistController() {
 			$.ajax({
 				url: _this.url,
 				type: 'GET',
-				cache: false,
+				// cache: false,
 				success: function(data) {
 					_this.render(data, true)
 				},
