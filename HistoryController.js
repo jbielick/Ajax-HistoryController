@@ -1,7 +1,17 @@
 /*
- *  History Controller
- *    Author: Josh Bielick
- */
+	 ___ ___    _   ___ __  __ ___ _  _ _____  
+	| __| _ \  /_\ / __|  \/  | __| \| |_   _|  
+	| _||   / / _ \ (_ | |\/| | _|| .` | | |    
+	|_| |_|_\/_/ \_\___|_|  |_|___|_|\_| |_|    
+					   FRAGMENTLABS.COM
+
+	History Controller
+	------
+	A javascript class for enabling ajax navigation with a central 'view',
+	configurable caching, and overrides.
+	Uses HTML5 History API features such as pushState and replaceState.
+
+*/
 var Hist
 if(window.history.pushState)
 	Hist = Hist || new HistController()
@@ -10,32 +20,37 @@ function HistController() {
 	var _this = this
 	this.url = window.location.pathname
 	this.cache = {}
+	this.cacheTimeout = 10000
+	this.useAjaxCaching = true
 	this.requests = 0
 	this.view = '#view'
 	this.start = false
 	this.init = function() {
-
+		
 	}
 	this.get = function(e) {
-		if(typeof e == 'object')
-			e.preventDefault()
-		_this.url = (typeof e == 'object') ? $(e.currentTarget).attr('href') : e
+		if(typeof e === 'object')
+			if(!e.metaKey)
+				e.preventDefault()
+			else
+				return true
+		_this.url = (typeof e == 'object' && e.currentTarget) ? $(e.currentTarget).attr('href') : e
 		_this.start = true
-		if(_this.url in _this.cache) {
+		if(_this.url in _this.cache && !_this.admin) {
 			_this.render(_this.cache[_this.url], false)
 		} else {
 			_this.requests++
 			$.ajax({
 				url: _this.url,
 				type: 'GET',
-				// cache: false,
+				cache: _this.useAjaxCaching,
 				success: function(data) {
 					_this.render(data, true)
 				},
 				error: function(xhr, e, msg) {
 					_this.render(xhr.responseText, true)
 					if(!(/^4/.test(xhr.status)))
-						$('#view').prepend($('<div id="flashMessage">An Error Occurred: ('+msg+')<br>'+xhr.responseText+'</div>'))
+						$('#view').prepend($('<div id="flashMessage">An Error Occurred: ('+msg+')<br></div>'))
 				},
 				complete: function() {
 					_this.requests--
@@ -82,7 +97,7 @@ function HistController() {
 			_this.cache[url] = JSON.stringify({html:data,url:url})
 			setTimeout(function() {
 				delete _this.cache[url]
-			}, 10000)
+			}, _this.cacheTimeout)
 		}
 	}
 	if(window.location.hash) {
