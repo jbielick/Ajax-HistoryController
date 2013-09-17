@@ -37,7 +37,7 @@ function HistController() {
 		_this.url = (typeof e == 'object' && e.currentTarget) ? $(e.currentTarget).attr('href') : e
 		_this.start = true
 		if(_this.url in _this.cache && !_this.admin) {
-			_this.render(_this.cache[_this.url], false)
+			_this.render(_this.cache[_this.url], true)
 		} else {
 			_this.requests++
 			$.ajax({
