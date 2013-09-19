@@ -43,17 +43,13 @@ function HistController() {
 			$.ajax({
 				url: _this.url,
 				type: 'GET',
+				dataType: 'html',
 				cache: _this.useAjaxCaching,
-				success: function(data) {
-					_this.render(data, true)
-				},
-				error: function(xhr, e, msg) {
-					_this.render(xhr.responseText, true)
-					if(!(/^4/.test(xhr.status)))
-						$('#view').prepend($('<div id="flashMessage">An Error Occurred: ('+msg+')<br></div>'))
-				},
-				complete: function() {
+				complete: function(xhr) {
 					_this.requests--
+					_this.render(xhr.responseText, true)
+					if(/^4/.test(xhr.status))
+						$('#view').prepend($('<div id="flashMessage">An Error Occurred: ('+xhr.statusText+')<br></div>'))
 				}
 			})
 		}
