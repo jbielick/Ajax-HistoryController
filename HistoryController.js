@@ -24,6 +24,7 @@ function HistController() {
 	this.useAjaxCaching = true
 	this.requests = 0
 	this.view = '#view'
+	this.enable = 'a[href^="/"].ajax'
 	this.start = false
 	this.init = function() {
 		
@@ -36,19 +37,22 @@ function HistController() {
 				return true
 		_this.url = (typeof e == 'object' && e.currentTarget) ? $(e.currentTarget).attr('href') : e
 		_this.start = true
-		if(_this.url in _this.cache && !_this.admin) {
-			_this.render(_this.cache[_this.url], true)
+		if(_this.url in _this.cache) {
+			_this.render(_this.cache[_this.url], _this.url, true)
 		} else {
 			_this.requests++
 			$.ajax({
 				url: _this.url,
 				type: 'GET',
 				dataType: 'html',
+				headers: {
+					Accept: 'text/html'
+				},
 				cache: _this.useAjaxCaching,
 				complete: function(xhr) {
 					_this.requests--
-					_this.render(xhr.responseText, true)
-					if(/^4/.test(xhr.status))
+					_this.render(xhr.responseText, _this.url, true)
+					if(/^4|^5/.test(xhr.status))
 						$('#view').prepend($('<div id="flashMessage">An Error Occurred: ('+xhr.statusText+')<br></div>'))
 				}
 			})
@@ -58,47 +62,42 @@ function HistController() {
 		if(!history.state || !_this.start) {
 			_this.saveState()
 		} else {
-			_this.render(history.state, false)
+			_this.render(_this.cache[history.state], history.state, false)
 		}
 	},
 	this.saveState = function() {
-		data = {html:$(_this.view).html(),url:window.location.pathname}
-		window.history.replaceState(JSON.stringify(data), document.title, data.url)
+		_this.cache[window.location.pathname] = $(_this.view).contents()
+		window.history.replaceState(window.location.pathname, document.title, window.location.pathname)
 	},
-	this.render = function(data, push) {
+	this.render = function(data, url, push) {
+		var push = push || true
 		if(_this.requests < 2) {
-			var push = (typeof push === 'undefined') ? true : push
-			try {
-				data = JSON.parse(data)
-			} catch(e) {
-				data = {html:data, url: _this.url}
-			}
 			_this.saveState()
 			if(window.history.pushState) {
 				if(push) {
-					_this._cache(data.url, data.html)
-					window.history.pushState(JSON.stringify(data), null, data.url)
+					_this._cache(url, data)
+					window.history.pushState(url, null, url)
 				} else {
-					window.history.replaceState(JSON.stringify(data), null, data.url)
+					window.history.replaceState(url, null, url)
 				}
 			} else if (push) {
 				// window.location.hash = '!'+data.url.substring(data.url.indexOf('#'), -1)
 			}
-			$(_this.view).html(data.html)
+			$(_this.view).($(data))
 			_this.init()
 		}
 	},
 	this._cache = function(url, data) {
-		if(!(url in _this.cache)) {
-			_this.cache[url] = JSON.stringify({html:data,url:url})
-			setTimeout(function() {
-				delete _this.cache[url]
-			}, _this.cacheTimeout)
-		}
+		// if(!(url in _this.cache)) {
+			_this.cache[url] = data
+			// setTimeout(function() {
+			// 	delete _this.cache[url]
+			// }, _this.cacheTimeout)
+		// }
 	}
 	if(window.location.hash) {
 		this.get(window.location.hash.replace('#!', ''))
 	}
-	$(document).on('click', 'a[href^="/"]:not(.hard)', this.get)
+	$(document).on('click', this.enable, this.get)
 	$(window).on('popstate', this.changeState)
 }
